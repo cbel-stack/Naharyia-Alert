@@ -497,10 +497,29 @@
     });
 
     // =============================================
+    // WAKE LOCK (Android/Chrome only — silent no-op on iOS)
+    // =============================================
+    let wakeLock = null;
+
+    async function requestWakeLock() {
+      if (!('wakeLock' in navigator)) return; // not supported (iOS Safari)
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        // Re-acquire if released (e.g. tab hidden then visible again)
+        document.addEventListener('visibilitychange', async () => {
+          if (document.visibilityState === 'visible' && !wakeLock) {
+            try { wakeLock = await navigator.wakeLock.request('screen'); } catch (_) {}
+          }
+        });
+      } catch (_) {}
+    }
+
+    // =============================================
     // START
     // =============================================
     document.getElementById('start-btn').addEventListener('click', () => {
       initAudio();
+      requestWakeLock();
 
       document.getElementById('start-screen').style.display = 'none';
       const app = document.getElementById('app');
