@@ -80,18 +80,21 @@
     }
 
     /* ── STATES ── */
-    #app.idle      { background: #000000; }
-    #app.pre-alert { background: #CC7A1A; }
-    #app.alert     { background: #B71C1C; }
-    #app.all-clear { background: #1B5E20; }
+    #app.idle         { background: #000000; }
+    #app.pre-alert    { background: #CC7A1A; }
+    #app.alert-rocket { background: #B71C1C; }
+    #app.alert-drone  { background: #7B1FA2; }
+    #app.all-clear    { background: #1B5E20; }
 
-    /* Flash animation for alert state */
+    /* Flash animation for alert states */
     @keyframes flash {
       0%, 100% { opacity: 1; }
       50%       { opacity: 0.75; }
     }
-    #app.alert { animation: flash 1.2s ease-in-out infinite; }
-    #app.alert #clock { animation: none; opacity: 1; } /* keep clock stable */
+    #app.alert-rocket { animation: flash 1.2s ease-in-out infinite; }
+    #app.alert-drone  { animation: flash 1.2s ease-in-out infinite; }
+    #app.alert-rocket #clock { animation: none; opacity: 1; }
+    #app.alert-drone  #clock { animation: none; opacity: 1; }
 
     /* ── ALERT CONTENT ── */
     #alert-content {
@@ -195,9 +198,10 @@
     <button id="start-btn">▶ Démarrer</button>
 
     <div style="margin-top: 30px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
-      <button class="test-btn" data-state="pre_alert" style="background:#E65100; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Pré-alerte</button>
-      <button class="test-btn" data-state="alert"     style="background:#B71C1C; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Alerte</button>
-      <button class="test-btn" data-state="all_clear" style="background:#1B5E20; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Fin d'alerte</button>
+      <button class="test-btn" data-state="pre_alert"    style="background:#CC7A1A; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Pré-alerte</button>
+      <button class="test-btn" data-state="alert_rocket" style="background:#B71C1C; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Roquette</button>
+      <button class="test-btn" data-state="alert_drone"  style="background:#7B1FA2; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Drone</button>
+      <button class="test-btn" data-state="all_clear"    style="background:#1B5E20; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Fin d'alerte</button>
     </div>
   </div>
 
@@ -238,10 +242,17 @@
         descHe:      'התקרבו למרחב המוגן',
         descFr:      'Rapprochez-vous des abris'
       },
-      alert: {
-        cssClass:    'alert',
-        titleHe:     'אזעקה',
-        titleFr:     'ALERTE',
+      alert_rocket: {
+        cssClass:    'alert-rocket',
+        titleHe:     'אזעקה — ירי רקטות וטילים',
+        titleFr:     'ALERTE — ROQUETTES / MISSILES',
+        descHe:      'היכנסו מיד למרחב המוגן',
+        descFr:      'Entrez immédiatement dans l\'abri'
+      },
+      alert_drone: {
+        cssClass:    'alert-drone',
+        titleHe:     'אזעקה — חדירת כלי טיס עוין',
+        titleFr:     'ALERTE — DRONE HOSTILE',
         descHe:      'היכנסו מיד למרחב המוגן',
         descFr:      'Entrez immédiatement dans l\'abri'
       },
@@ -407,10 +418,11 @@
 
       if (cat === '13') return 'all_clear';
       if (cat === '14') return 'pre_alert';
-      if (cat === '1' || cat === '2') return 'alert';
+      if (cat === '1')  return 'alert_rocket';
+      if (cat === '2')  return 'alert_drone';
 
-      // Fallback: unknown category → treat as alert
-      return 'alert';
+      // Fallback: unknown category → treat as rocket alert
+      return 'alert_rocket';
     }
 
     // =============================================
@@ -421,7 +433,7 @@
       const sim = new URLSearchParams(location.search).get('simulate');
       if (sim) {
         if (sim === 'idle') setState('idle');
-        else if (['pre_alert','alert','all_clear'].includes(sim)) setState(sim);
+        else if (['pre_alert','alert_rocket','alert_drone','all_clear'].includes(sim)) setState(sim);
         return;
       }
 
@@ -436,7 +448,7 @@
           if (alertType !== state) setState(alertType);
         } else {
           // No active alert for Nahariya
-          if (state === 'pre_alert' || state === 'alert') {
+          if (['pre_alert','alert_rocket','alert_drone'].includes(state)) {
             setState('all_clear'); // was active → now ended
           }
           // idle or all_clear: do nothing
