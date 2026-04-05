@@ -418,8 +418,8 @@
         // pre_alert, alert_rocket, alert_drone
         if (newState === 'alert_rocket' || newState === 'alert_drone') {
           if (!shelterStartMs) shelterStartMs = Date.now(); // start only on real alert
+          playSiren();
         }
-        playSiren();
         allClearEndMs = null;
         document.getElementById('countdown').textContent = '';
       }
