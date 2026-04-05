@@ -1,8 +1,10 @@
 const OREF_HEADERS = {
   'X-Requested-With': 'XMLHttpRequest',
   'Referer': 'https://www.oref.org.il/',
+  'Origin': 'https://www.oref.org.il',
   'Accept': 'application/json, text/javascript, */*; q=0.01',
-  'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)'
+  'Accept-Language': 'he-IL,he;q=0.9,en;q=0.8',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 };
 
 async function fetchOref() {
@@ -23,9 +25,9 @@ async function fetchOref() {
   return { status: 'active', alert: data, source: 'oref' };
 }
 
-// tzevaadom.co.il is a community proxy for oref — more accessible outside Israel
+// tzevaadom.co.il — community proxy, endpoint /notifications
 async function fetchTzevaadom() {
-  const response = await fetch('https://api.tzevaadom.co.il/alerts', {
+  const response = await fetch('https://api.tzevaadom.co.il/notifications', {
     headers: { 'User-Agent': 'Mozilla/5.0' }
   });
 
