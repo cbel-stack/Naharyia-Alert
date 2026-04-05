@@ -427,10 +427,11 @@
 
     // =============================================
     // ALERT CLASSIFICATION
-    // cat=14 → pre_alert (alerts expected in your area)
-    // cat=1  → alert (rockets/missiles)
-    // cat=2  → alert (hostile UAV/drone)
-    // cat=13 → all_clear (event ended)
+    // Based on title (reliable) — cat numbers differ between live API and history API
+    // "האירוע הסתיים"                    → all_clear
+    // "בדקות הקרובות" or "אזהרה מוקדמת" → pre_alert
+    // "חדירת כלי טיס עוין"               → alert_drone
+    // "ירי רקטות וטילים" or other        → alert_rocket
     // =============================================
     function classifyApiResponse(data) {
       if (!data || data.status === 'none') return null;
@@ -442,14 +443,13 @@
       const isLocal = alert.data.some(c => c.includes(CITY_HE));
       if (!isLocal) return null;
 
-      const cat = String(alert.cat || '');
+      const title = (alert.title || '').trim();
 
-      if (cat === '13') return 'all_clear';
-      if (cat === '14') return 'pre_alert';
-      if (cat === '1')  return 'alert_rocket';
-      if (cat === '2')  return 'alert_drone';
+      if (title.includes('הסתיים') || title.includes('ניתן לצאת')) return 'all_clear';
+      if (title.includes('בדקות הקרובות') || title.includes('אזהרה מוקדמת')) return 'pre_alert';
+      if (title.includes('כלי טיס') || title.includes('טיס עוין')) return 'alert_drone';
 
-      // Fallback: unknown category → treat as rocket alert
+      // Rockets, missiles, or any other active alert
       return 'alert_rocket';
     }
 
