@@ -300,6 +300,8 @@
     // STATE
     // =============================================
     let state          = 'idle'; // idle | pre_alert | alert_rocket | alert_drone | all_clear
+    let emptyPollCount = 0;     // consecutive polls with no alert — triggers inferred all-clear
+    const EMPTY_FOR_ALLCLEAR = 5; // 5 × 3sec = 15 sec before inferred all-clear
     let audioCtx       = null;
     let sirenOsc       = null;
     let allClearEndMs  = null;
@@ -502,11 +504,24 @@
         const alertType = classifyApiResponse(data);
 
         if (alertType) {
-          if (alertType !== state) setState(alertType);
+          emptyPollCount = 0;
+          // Explicit all-clear from oref (title contains "הסתיים")
+          if (alertType === 'all_clear') {
+            if (state !== 'all_clear') setState('all_clear');
+          } else if (alertType !== state) {
+            setState(alertType);
+          }
         } else {
-          // No active alert for Nahariya — transition back toward idle
-          if (state !== 'idle' && state !== 'all_clear') {
-            setState('all_clear');
+          // No active alert for Nahariya
+          if (['pre_alert','alert_rocket','alert_drone'].includes(state)) {
+            emptyPollCount++;
+            // After 5 consecutive empty polls (15 sec) → infer all-clear
+            if (emptyPollCount >= EMPTY_FOR_ALLCLEAR) {
+              emptyPollCount = 0;
+              setState('all_clear');
+            }
+          } else {
+            emptyPollCount = 0;
           }
         }
       } catch (e) {
