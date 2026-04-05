@@ -406,6 +406,14 @@
     // POLLING
     // =============================================
     async function poll() {
+      // Test mode: ?simulate=pre_alert | alert | all_clear | idle
+      const sim = new URLSearchParams(location.search).get('simulate');
+      if (sim) {
+        if (sim === 'idle') setState('idle');
+        else if (['pre_alert','alert','all_clear'].includes(sim)) setState(sim);
+        return;
+      }
+
       try {
         const res  = await fetch('/api/alerts', { cache: 'no-store' });
         if (!res.ok) return;
