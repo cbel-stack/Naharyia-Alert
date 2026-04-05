@@ -86,6 +86,7 @@ export default async function handler(req, res) {
   const allFailed = errors.length === 2;
   return res.status(200).json({
     status: 'none',
-    apiError: allFailed ? errors.join(' | ') : undefined
+    apiError: allFailed ? errors.join(' | ') : undefined,
+    debug: errors.length > 0 ? errors : undefined
   });
 }
