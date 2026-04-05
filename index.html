@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Alert Nahariya">
+  <title>Alert Nahariya</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+      height: 100dvh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── START SCREEN ── */
+    #start-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      text-align: center;
+      padding: 40px;
+    }
+    #start-screen h1 {
+      font-size: clamp(26px, 5vw, 42px);
+      font-weight: 300;
+      letter-spacing: 4px;
+    }
+    #start-screen h2 {
+      font-size: clamp(20px, 3.5vw, 32px);
+      font-weight: 400;
+      color: #aaa;
+      direction: rtl;
+    }
+    #start-screen p {
+      font-size: clamp(14px, 2vw, 18px);
+      color: #666;
+      line-height: 1.7;
+      max-width: 380px;
+    }
+    #start-screen p strong { color: #aaa; }
+    #start-btn {
+      background: #1a1a1a;
+      color: #fff;
+      border: 2px solid #444;
+      padding: 18px 52px;
+      font-size: clamp(18px, 2.5vw, 24px);
+      border-radius: 14px;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background 0.15s;
+    }
+    #start-btn:active { background: #333; }
+
+    /* ── MAIN APP ── */
+    #app {
+      display: none;
+      width: 100%;
+      height: 100%;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 30px 20px;
+      transition: background-color 0.4s ease;
+    }
+
+    /* ── STATES ── */
+    #app.idle      { background: #000000; }
+    #app.pre-alert { background: #E65100; }
+    #app.alert     { background: #B71C1C; }
+    #app.all-clear { background: #1B5E20; }
+
+    /* Flash animation for alert state */
+    @keyframes flash {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.75; }
+    }
+    #app.alert { animation: flash 1.2s ease-in-out infinite; }
+    #app.alert #clock { animation: none; opacity: 1; } /* keep clock stable */
+
+    /* ── ALERT CONTENT ── */
+    #alert-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+
+    #city {
+      font-size: clamp(22px, 4vw, 38px);
+      font-weight: 700;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.95);
+    }
+    #city-he {
+      font-size: clamp(18px, 3vw, 30px);
+      font-weight: 300;
+      direction: rtl;
+      color: rgba(255,255,255,0.75);
+      margin-bottom: 14px;
+    }
+    #alert-title-he {
+      font-size: clamp(44px, 9vw, 80px);
+      font-weight: 800;
+      direction: rtl;
+      line-height: 1.1;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+    #alert-title-fr {
+      font-size: clamp(28px, 5.5vw, 54px);
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+    #alert-desc-he {
+      font-size: clamp(18px, 3vw, 28px);
+      direction: rtl;
+      color: rgba(255,255,255,0.88);
+      margin-top: 8px;
+    }
+    #alert-desc-fr {
+      font-size: clamp(16px, 2.5vw, 24px);
+      color: rgba(255,255,255,0.88);
+    }
+
+    /* ── CLOCK ── */
+    #clock {
+      font-size: clamp(54px, 11vw, 110px);
+      font-weight: 100;
+      letter-spacing: 4px;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum";
+      color: rgba(255,255,255,0.95);
+    }
+
+    /* Idle clock — visible but discreet */
+    .idle #clock {
+      font-size: clamp(48px, 10vw, 90px);
+      color: #2a2a2a;
+      letter-spacing: 4px;
+    }
+    .idle #alert-content { display: none; }
+    .idle #countdown     { display: none; }
+
+    /* ── COUNTDOWN ── */
+    #countdown {
+      margin-top: 22px;
+      font-size: clamp(16px, 2.5vw, 22px);
+      color: rgba(255,255,255,0.65);
+      letter-spacing: 1px;
+    }
+
+    /* ── STATUS DOT (idle only) ── */
+    #status-dot {
+      display: none;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #111;
+      position: fixed;
+      bottom: 20px;
+      left: 22px;
+    }
+    .idle #status-dot { display: block; }
+  </style>
+</head>
+<body>
+
+  <!-- ── START SCREEN ── -->
+  <div id="start-screen">
+    <h1>ALERT NAHARIYA</h1>
+    <h2>נהריה — מערכת התראות</h2>
+    <p>
+      Appuyez pour démarrer la surveillance.<br>
+      Avant de poser l'appareil :<br>
+      <strong>Réglages → Affichage → Verrouillage auto → Jamais</strong>
+    </p>
+    <button id="start-btn">▶ Démarrer</button>
+  </div>
+
+  <!-- ── MAIN APP ── -->
+  <div id="app" class="idle">
+
+    <div id="alert-content">
+      <div id="city">NAHARIYA</div>
+      <div id="city-he">נהריה</div>
+      <div id="alert-title-he"></div>
+      <div id="alert-title-fr"></div>
+      <div id="alert-desc-he"></div>
+      <div id="alert-desc-fr"></div>
+    </div>
+
+    <div id="clock"></div>
+    <div id="countdown"></div>
+    <div id="status-dot"></div>
+
+  </div>
+
+  <script>
+    // =============================================
+    // CONFIG
+    // =============================================
+    const CITY_HE        = 'נהריה';
+    const POLL_MS        = 5000;          // poll every 5 sec
+    const ALL_CLEAR_MS   = 10 * 60 * 1000; // 10 min green screen
+    const SIREN_DURATION = 15;            // seconds
+
+    const ALERT_DEFS = {
+      pre_alert: {
+        cssClass:    'pre-alert',
+        titleHe:     'אזהרה מוקדמת',
+        titleFr:     'PRÉ-ALERTE',
+        descHe:      'התקרבו למרחב המוגן',
+        descFr:      'Rapprochez-vous des abris'
+      },
+      alert: {
+        cssClass:    'alert',
+        titleHe:     'אזעקה',
+        titleFr:     'ALERTE',
+        descHe:      'היכנסו מיד למרחב המוגן',
+        descFr:      'Entrez immédiatement dans l\'abri'
+      },
+      all_clear: {
+        cssClass:    'all-clear',
+        titleHe:     'ירוק — כל ברור',
+        titleFr:     'FIN D\'ALERTE',
+        descHe:      'ניתן לצאת מהמרחב המוגן',
+        descFr:      'Vous pouvez sortir'
+      }
+    };
+
+    // =============================================
+    // STATE
+    // =============================================
+    let state          = 'idle'; // idle | pre_alert | alert | all_clear
+    let audioCtx       = null;
+    let sirenOsc       = null;
+    let allClearEndMs  = null;
+    let wasActive      = false;
+
+    // =============================================
+    // AUDIO — synthesised siren
+    // =============================================
+    function initAudio() {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      // Unlock with silent buffer
+      const buf = audioCtx.createBuffer(1, 1, 22050);
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(audioCtx.destination);
+      src.start();
+    }
+
+    function playSiren() {
+      if (!audioCtx) return;
+      stopSiren();
+
+      const now  = audioCtx.currentTime;
+      const dur  = SIREN_DURATION;
+      const osc  = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filt = audioCtx.createBiquadFilter();
+
+      filt.type = 'lowpass';
+      filt.frequency.value = 1800;
+
+      osc.type = 'sawtooth';
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.38, now + 0.15);
+      gain.gain.setValueAtTime(0.38, now + dur - 0.4);
+      gain.gain.linearRampToValueAtTime(0, now + dur);
+
+      // Wailing pattern: 3-second cycles, 400 Hz → 900 Hz → 400 Hz
+      const cycle = 3.0;
+      for (let i = 0; i < Math.ceil(dur / cycle); i++) {
+        const t = now + i * cycle;
+        osc.frequency.setValueAtTime(400, t);
+        osc.frequency.linearRampToValueAtTime(900, t + cycle * 0.5);
+        osc.frequency.linearRampToValueAtTime(400, t + cycle);
+      }
+
+      osc.connect(filt);
+      filt.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + dur);
+
+      sirenOsc = osc;
+    }
+
+    function stopSiren() {
+      if (sirenOsc) {
+        try { sirenOsc.stop(); } catch (_) {}
+        sirenOsc = null;
+      }
+    }
+
+    // =============================================
+    // CLOCK
+    // =============================================
+    function updateClock() {
+      const n = new Date();
+      const pad = v => String(v).padStart(2, '0');
+      document.getElementById('clock').textContent =
+        `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // =============================================
+    // COUNTDOWN
+    // =============================================
+    function updateCountdown() {
+      if (state !== 'all_clear' || !allClearEndMs) return;
+      const rem = allClearEndMs - Date.now();
+      if (rem <= 0) { setState('idle'); return; }
+      const m = Math.floor(rem / 60000);
+      const s = Math.floor((rem % 60000) / 1000);
+      document.getElementById('countdown').textContent =
+        `Retour à l'écran noir dans : ${m}:${String(s).padStart(2, '0')}`;
+    }
+    setInterval(updateCountdown, 1000);
+
+    // =============================================
+    // STATE MACHINE
+    // =============================================
+    function setState(newState) {
+      if (state === newState) return;
+      state = newState;
+
+      const app = document.getElementById('app');
+      app.className = '';
+
+      if (newState === 'idle') {
+        app.classList.add('idle');
+        stopSiren();
+        allClearEndMs = null;
+        wasActive = false;
+        document.getElementById('countdown').textContent = '';
+        return;
+      }
+
+      const def = ALERT_DEFS[newState];
+      app.classList.add(def.cssClass);
+
+      document.getElementById('alert-title-he').textContent = def.titleHe;
+      document.getElementById('alert-title-fr').textContent = def.titleFr;
+      document.getElementById('alert-desc-he').textContent  = def.descHe;
+      document.getElementById('alert-desc-fr').textContent  = def.descFr;
+
+      if (newState === 'all_clear') {
+        stopSiren();
+        allClearEndMs = Date.now() + ALL_CLEAR_MS;
+        updateCountdown();
+      } else {
+        // pre_alert or alert
+        playSiren();
+        wasActive = true;
+        allClearEndMs = null;
+        document.getElementById('countdown').textContent = '';
+      }
+    }
+
+    // =============================================
+    // ALERT CLASSIFICATION
+    // =============================================
+    function classifyApiResponse(data) {
+      if (!data || data.status === 'none') return null;
+
+      const alert = data.alert;
+      if (!alert || !Array.isArray(alert.data)) return null;
+
+      // Filter by Nahariya
+      const isLocal = alert.data.some(c => c.includes(CITY_HE));
+      if (!isLocal) return null;
+
+      const title = (alert.title || '').trim();
+
+      if (title.includes('ירוק') || title.includes('כל ברור') || title.includes('ניתן לצאת')) {
+        return 'all_clear';
+      }
+      if (title.includes('אזהרה מוקדמת') || alert.cat === '101') {
+        return 'pre_alert';
+      }
+      return 'alert';
+    }
+
+    // =============================================
+    // POLLING
+    // =============================================
+    async function poll() {
+      try {
+        const res  = await fetch('/api/alerts', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const alertType = classifyApiResponse(data);
+
+        if (alertType) {
+          if (alertType !== state) setState(alertType);
+        } else {
+          // No active alert for Nahariya
+          if (state === 'pre_alert' || state === 'alert') {
+            setState('all_clear'); // was active → now ended
+          }
+          // idle or all_clear: do nothing
+        }
+      } catch (e) {
+        console.warn('Poll error:', e.message);
+      }
+    }
+
+    // =============================================
+    // START
+    // =============================================
+    document.getElementById('start-btn').addEventListener('click', () => {
+      initAudio();
+
+      document.getElementById('start-screen').style.display = 'none';
+      const app = document.getElementById('app');
+      app.style.display = 'flex';
+
+      poll();
+      setInterval(poll, POLL_MS);
+    });
+  </script>
+</body>
+</html>
