@@ -193,6 +193,12 @@
       <strong>Réglages → Affichage → Verrouillage auto → Jamais</strong>
     </p>
     <button id="start-btn">▶ Démarrer</button>
+
+    <div style="margin-top: 30px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+      <button class="test-btn" data-state="pre_alert" style="background:#E65100; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Pré-alerte</button>
+      <button class="test-btn" data-state="alert"     style="background:#B71C1C; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Alerte</button>
+      <button class="test-btn" data-state="all_clear" style="background:#1B5E20; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Fin d'alerte</button>
+    </div>
   </div>
 
   <!-- ── MAIN APP ── -->
@@ -210,6 +216,8 @@
     <div id="clock"></div>
     <div id="countdown"></div>
     <div id="status-dot"></div>
+
+    <button id="back-btn" onclick="document.getElementById('app').style.display='none'; document.getElementById('start-screen').style.display='flex'; stopSiren();" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; border:none; padding:12px 28px; border-radius:10px; font-size:16px; cursor:pointer;">← Retour</button>
 
   </div>
 
@@ -434,6 +442,20 @@
         console.warn('Poll error:', e.message);
       }
     }
+
+    // =============================================
+    // TEST BUTTONS
+    // =============================================
+    document.querySelectorAll('.test-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        initAudio();
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+        setState(btn.dataset.state);
+        // Show back button
+        document.getElementById('back-btn').style.display = 'block';
+      });
+    });
 
     // =============================================
     // START
