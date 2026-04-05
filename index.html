@@ -475,7 +475,10 @@
         if (alertType) {
           if (alertType !== state) setState(alertType);
         } else {
-          // No active alert for Nahariya — do nothing, wait for explicit cat=13
+          // No active alert for Nahariya — transition back toward idle
+          if (state !== 'idle' && state !== 'all_clear') {
+            setState('all_clear');
+          }
         }
       } catch (e) {
         console.warn('Poll error:', e.message);
