@@ -300,8 +300,8 @@
         cssClass:    'uncertain',
         titleHe:     'סיום לא מאושר',
         titleFr:     'FIN NON CONFIRMÉE',
-        descHe:      'הישארו במרחב המוגן — בדקו את האפליקציות שלכם',
-        descFr:      'Restez dans l\'abri — vérifiez vos autres applications'
+        descHe:      'אין גישה ל-API — הישארו במרחב המוגן ובדקו את אפליקציית פיקוד העורף',
+        descFr:      'Pas d\'accès à l\'API — restez dans l\'abri et vérifiez l\'app Pikud HaOref'
       }
     };
 
@@ -388,7 +388,7 @@
     // =============================================
     function updateTimers() {
       // All-clear countdown
-      if (state === 'all_clear' && allClearEndMs) {
+      if ((state === 'all_clear' || state === 'uncertain') && allClearEndMs) {
         const rem = allClearEndMs - Date.now();
         if (rem <= 0) { setState('idle'); return; }
         const m = Math.floor(rem / 60000);
@@ -442,8 +442,7 @@
         // shelterStartMs keeps running — don't reset
       } else if (newState === 'uncertain') {
         stopSiren();
-        allClearEndMs = null;
-        document.getElementById('countdown').textContent = '';
+        allClearEndMs = Date.now() + (10 * 60 * 1000); // 10 min then back to black
         // shelterStartMs keeps running — don't reset
       } else {
         // pre_alert, alert_rocket, alert_drone
