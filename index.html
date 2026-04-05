@@ -564,6 +564,63 @@
     }
 
     // =============================================
+    // WEBSOCKET — tzevaadom real-time feed
+    // =============================================
+    const THREAT_TITLE_WS = {
+      1: 'ירי רקטות וטילים',
+      3: 'חדירת כלי טיס עוין',
+      6: 'חדירת כלי טיס עוין',
+    };
+
+    function connectWebSocket() {
+      let ws;
+      try {
+        ws = new WebSocket('wss://ws.tzevaadom.co.il/socket?platform=WEB');
+      } catch(e) { return; }
+
+      ws.onopen = () => console.log('[WS] connected');
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          console.log('[WS] message:', JSON.stringify(msg));
+
+          // Handle array of alerts
+          const alerts = Array.isArray(msg) ? msg : (msg.data ? msg.data : null);
+          if (!alerts) return;
+
+          if (alerts.length === 0) {
+            // Empty → alert ended
+            if (['pre_alert','alert_rocket','alert_drone'].includes(state)) {
+              setState('uncertain');
+            }
+            return;
+          }
+
+          // Find alert for Nahariya
+          for (const alert of alerts) {
+            const cities = alert.cities || alert.towns || [];
+            const isLocal = cities.some(c => c.includes(CITY_HE));
+            if (!isLocal) continue;
+
+            const title = THREAT_TITLE_WS[alert.threat] || 'ירי רקטות וטילים';
+            const fakeData = { status: 'active', alert: { title, data: cities, cat: String(alert.threat || '1') } };
+            const alertType = classifyApiResponse(fakeData);
+            if (alertType && alertType !== state) setState(alertType);
+            return;
+          }
+        } catch(e) { console.warn('[WS] parse error:', e); }
+      };
+
+      ws.onclose = () => {
+        console.log('[WS] closed — reconnecting in 5s');
+        setTimeout(connectWebSocket, 5000);
+      };
+
+      ws.onerror = () => console.warn('[WS] error');
+    }
+
+    // =============================================
     // START
     // =============================================
     document.getElementById('start-btn').addEventListener('click', () => {
@@ -574,6 +631,10 @@
       const app = document.getElementById('app');
       app.style.display = 'flex';
 
+      // WebSocket: real-time (primary)
+      connectWebSocket();
+
+      // Polling: fallback every 3s
       poll();
       setInterval(poll, POLL_MS);
     });
