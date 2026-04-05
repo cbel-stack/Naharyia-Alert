@@ -388,6 +388,10 @@
 
     // =============================================
     // ALERT CLASSIFICATION
+    // cat=14 → pre_alert (alerts expected in your area)
+    // cat=1  → alert (rockets/missiles)
+    // cat=2  → alert (hostile UAV/drone)
+    // cat=13 → all_clear (event ended)
     // =============================================
     function classifyApiResponse(data) {
       if (!data || data.status === 'none') return null;
@@ -399,14 +403,13 @@
       const isLocal = alert.data.some(c => c.includes(CITY_HE));
       if (!isLocal) return null;
 
-      const title = (alert.title || '').trim();
+      const cat = String(alert.cat || '');
 
-      if (title.includes('ירוק') || title.includes('כל ברור') || title.includes('ניתן לצאת')) {
-        return 'all_clear';
-      }
-      if (title.includes('אזהרה מוקדמת') || alert.cat === '101') {
-        return 'pre_alert';
-      }
+      if (cat === '13') return 'all_clear';
+      if (cat === '14') return 'pre_alert';
+      if (cat === '1' || cat === '2') return 'alert';
+
+      // Fallback: unknown category → treat as alert
       return 'alert';
     }
 
