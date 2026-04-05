@@ -84,6 +84,7 @@
     #app.pre-alert    { background: #CC7A1A; }
     #app.alert-rocket { background: #B71C1C; }
     #app.alert-drone  { background: #7B1FA2; }
+    #app.uncertain    { background: #7A6A00; }
     #app.all-clear    { background: #1B5E20; }
 
     /* Flash animation for alert states */
@@ -231,6 +232,7 @@
       <button class="test-btn" data-state="pre_alert"    style="background:#CC7A1A; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Pré-alerte</button>
       <button class="test-btn" data-state="alert_rocket" style="background:#B71C1C; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Roquette</button>
       <button class="test-btn" data-state="alert_drone"  style="background:#7B1FA2; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Drone</button>
+      <button class="test-btn" data-state="uncertain"    style="background:#7A6A00; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Fin non confirmée</button>
       <button class="test-btn" data-state="all_clear"    style="background:#1B5E20; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Fin d'alerte</button>
     </div>
   </div>
@@ -293,15 +295,20 @@
         titleFr:     'FIN D\'ALERTE',
         descHe:      'ניתן לצאת מהמרחב המוגן',
         descFr:      'Vous pouvez sortir'
+      },
+      uncertain: {
+        cssClass:    'uncertain',
+        titleHe:     'סיום לא מאושר',
+        titleFr:     'FIN NON CONFIRMÉE',
+        descHe:      'הישארו במרחב המוגן — בדקו את האפליקציות שלכם',
+        descFr:      'Restez dans l\'abri — vérifiez vos autres applications'
       }
     };
 
     // =============================================
     // STATE
     // =============================================
-    let state          = 'idle'; // idle | pre_alert | alert_rocket | alert_drone | all_clear
-    let emptyPollCount = 0;     // consecutive polls with no alert — triggers inferred all-clear
-    const EMPTY_FOR_ALLCLEAR = 5; // 5 × 3sec = 15 sec before inferred all-clear
+    let state          = 'idle'; // idle | pre_alert | alert_rocket | alert_drone | all_clear | uncertain
     let audioCtx       = null;
     let sirenOsc       = null;
     let allClearEndMs  = null;
@@ -433,6 +440,11 @@
         stopSiren();
         allClearEndMs = Date.now() + ALL_CLEAR_MS;
         // shelterStartMs keeps running — don't reset
+      } else if (newState === 'uncertain') {
+        stopSiren();
+        allClearEndMs = null;
+        document.getElementById('countdown').textContent = '';
+        // shelterStartMs keeps running — don't reset
       } else {
         // pre_alert, alert_rocket, alert_drone
         if (newState === 'alert_rocket' || newState === 'alert_drone') {
@@ -480,7 +492,7 @@
       const sim = new URLSearchParams(location.search).get('simulate');
       if (sim) {
         if (sim === 'idle') setState('idle');
-        else if (['pre_alert','alert_rocket','alert_drone','all_clear'].includes(sim)) setState(sim);
+        else if (['pre_alert','alert_rocket','alert_drone','all_clear','uncertain'].includes(sim)) setState(sim);
         return;
       }
 
@@ -504,25 +516,15 @@
         const alertType = classifyApiResponse(data);
 
         if (alertType) {
-          emptyPollCount = 0;
-          // Explicit all-clear from oref (title contains "הסתיים")
-          if (alertType === 'all_clear') {
-            if (state !== 'all_clear') setState('all_clear');
-          } else if (alertType !== state) {
-            setState(alertType);
-          }
+          // Active alert or explicit all-clear received
+          if (alertType !== state) setState(alertType);
         } else {
           // No active alert for Nahariya
           if (['pre_alert','alert_rocket','alert_drone'].includes(state)) {
-            emptyPollCount++;
-            // After 5 consecutive empty polls (15 sec) → infer all-clear
-            if (emptyPollCount >= EMPTY_FOR_ALLCLEAR) {
-              emptyPollCount = 0;
-              setState('all_clear');
-            }
-          } else {
-            emptyPollCount = 0;
+            // Alert disappeared without explicit all-clear → uncertain
+            setState('uncertain');
           }
+          // uncertain/all_clear/idle → do nothing, wait for explicit signal
         }
       } catch (e) {
         console.warn('Poll error:', e.message);
