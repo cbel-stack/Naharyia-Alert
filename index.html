@@ -162,13 +162,26 @@
     .idle #alert-content { display: none; }
     .idle #countdown     { display: none; }
 
-    /* ── COUNTDOWN ── */
+    /* ── COUNTDOWN (all-clear only) ── */
     #countdown {
       margin-top: 22px;
       font-size: clamp(16px, 2.5vw, 22px);
       color: rgba(255,255,255,0.65);
       letter-spacing: 1px;
     }
+
+    /* ── SHELTER TIMER (all active states) ── */
+    #shelter-timer {
+      margin-top: 16px;
+      font-size: clamp(18px, 3vw, 26px);
+      font-weight: 600;
+      color: rgba(255,255,255,0.9);
+      letter-spacing: 1px;
+      background: rgba(0,0,0,0.2);
+      padding: 10px 24px;
+      border-radius: 10px;
+    }
+    .idle #shelter-timer { display: none; }
 
     /* ── STATUS DOT (idle only) ── */
     #status-dot {
@@ -219,6 +232,7 @@
 
     <div id="clock"></div>
     <div id="countdown"></div>
+    <div id="shelter-timer"></div>
     <div id="status-dot"></div>
 
     <button id="back-btn" onclick="document.getElementById('app').style.display='none'; document.getElementById('start-screen').style.display='flex'; stopSiren();" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; border:none; padding:12px 28px; border-radius:10px; font-size:16px; cursor:pointer;">← Retour</button>
@@ -268,11 +282,11 @@
     // =============================================
     // STATE
     // =============================================
-    let state          = 'idle'; // idle | pre_alert | alert | all_clear
+    let state          = 'idle'; // idle | pre_alert | alert_rocket | alert_drone | all_clear
     let audioCtx       = null;
     let sirenOsc       = null;
     let allClearEndMs  = null;
-    let wasActive      = false;
+    let shelterStartMs = null; // when the first alert began
 
     // =============================================
     // AUDIO — synthesised siren
@@ -344,18 +358,29 @@
     updateClock();
 
     // =============================================
-    // COUNTDOWN
+    // TIMERS
     // =============================================
-    function updateCountdown() {
-      if (state !== 'all_clear' || !allClearEndMs) return;
-      const rem = allClearEndMs - Date.now();
-      if (rem <= 0) { setState('idle'); return; }
-      const m = Math.floor(rem / 60000);
-      const s = Math.floor((rem % 60000) / 1000);
-      document.getElementById('countdown').textContent =
-        `Retour à l'écran noir dans : ${m}:${String(s).padStart(2, '0')}`;
+    function updateTimers() {
+      // All-clear countdown
+      if (state === 'all_clear' && allClearEndMs) {
+        const rem = allClearEndMs - Date.now();
+        if (rem <= 0) { setState('idle'); return; }
+        const m = Math.floor(rem / 60000);
+        const s = Math.floor((rem % 60000) / 1000);
+        document.getElementById('countdown').textContent =
+          `Retour à l'écran noir dans : ${m}:${String(s).padStart(2, '0')}`;
+      }
+
+      // Shelter duration timer — shown on all active states
+      if (state !== 'idle' && shelterStartMs) {
+        const elapsed = Date.now() - shelterStartMs;
+        const m = Math.floor(elapsed / 60000);
+        const s = Math.floor((elapsed % 60000) / 1000);
+        document.getElementById('shelter-timer').textContent =
+          `Dans l'abri depuis : ${m} mn ${String(s).padStart(2, '0')} sec`;
+      }
     }
-    setInterval(updateCountdown, 1000);
+    setInterval(updateTimers, 1000);
 
     // =============================================
     // STATE MACHINE
@@ -370,9 +395,10 @@
       if (newState === 'idle') {
         app.classList.add('idle');
         stopSiren();
-        allClearEndMs = null;
-        wasActive = false;
-        document.getElementById('countdown').textContent = '';
+        allClearEndMs  = null;
+        shelterStartMs = null;
+        document.getElementById('countdown').textContent     = '';
+        document.getElementById('shelter-timer').textContent = '';
         return;
       }
 
@@ -387,11 +413,11 @@
       if (newState === 'all_clear') {
         stopSiren();
         allClearEndMs = Date.now() + ALL_CLEAR_MS;
-        updateCountdown();
+        // shelterStartMs keeps running — don't reset
       } else {
-        // pre_alert or alert
+        // pre_alert, alert_rocket, alert_drone
+        if (!shelterStartMs) shelterStartMs = Date.now(); // start only once
         playSiren();
-        wasActive = true;
         allClearEndMs = null;
         document.getElementById('countdown').textContent = '';
       }
@@ -447,11 +473,7 @@
         if (alertType) {
           if (alertType !== state) setState(alertType);
         } else {
-          // No active alert for Nahariya
-          if (['pre_alert','alert_rocket','alert_drone'].includes(state)) {
-            setState('all_clear'); // was active → now ended
-          }
-          // idle or all_clear: do nothing
+          // No active alert for Nahariya — do nothing, wait for explicit cat=13
         }
       } catch (e) {
         console.warn('Poll error:', e.message);
