@@ -416,7 +416,9 @@
         // shelterStartMs keeps running — don't reset
       } else {
         // pre_alert, alert_rocket, alert_drone
-        if (!shelterStartMs) shelterStartMs = Date.now(); // start only once
+        if (newState === 'alert_rocket' || newState === 'alert_drone') {
+          if (!shelterStartMs) shelterStartMs = Date.now(); // start only on real alert
+        }
         playSiren();
         allClearEndMs = null;
         document.getElementById('countdown').textContent = '';
