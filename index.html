@@ -195,9 +195,26 @@
       left: 22px;
     }
     .idle #status-dot { display: block; }
+
+    /* ── API ERROR BANNER ── */
+    #api-error {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #7a1a1a;
+      color: #fff;
+      font-size: 13px;
+      text-align: center;
+      padding: 8px 12px;
+      z-index: 999;
+      letter-spacing: 0.5px;
+    }
   </style>
 </head>
 <body>
+
+  <!-- ── API ERROR BANNER ── -->
+  <div id="api-error">⚠ Connexion perdue — vérifiez internet</div>
 
   <!-- ── START SCREEN ── -->
   <div id="start-screen">
@@ -244,7 +261,7 @@
     // CONFIG
     // =============================================
     const CITY_HE        = 'נהריה';
-    const POLL_MS        = 5000;          // poll every 5 sec
+    const POLL_MS        = 3000;          // poll every 3 sec
     const ALL_CLEAR_MS   = 10 * 1000; // 10 sec green screen
     const SIREN_DURATION = 15;            // seconds
 
@@ -467,8 +484,20 @@
 
       try {
         const res  = await fetch('/api/alerts', { cache: 'no-store' });
-        if (!res.ok) return;
+        if (!res.ok) {
+          document.getElementById('api-error').style.display = 'block';
+          return;
+        }
         const data = await res.json();
+
+        // Show error banner if both upstream sources failed
+        const errBanner = document.getElementById('api-error');
+        if (data.apiError) {
+          errBanner.textContent = '⚠ API injoignable — alertes peut-être manquées';
+          errBanner.style.display = 'block';
+        } else {
+          errBanner.style.display = 'none';
+        }
 
         const alertType = classifyApiResponse(data);
 
@@ -482,6 +511,7 @@
         }
       } catch (e) {
         console.warn('Poll error:', e.message);
+        document.getElementById('api-error').style.display = 'block';
       }
     }
 
