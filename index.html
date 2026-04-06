@@ -585,23 +585,21 @@
           const alerts = Array.isArray(msg) ? msg : (msg.data ? msg.data : null);
           if (!alerts) return;
 
-          if (alerts.length === 0) {
-            // Empty → alert ended
-            // Alert disappeared — stay on current state, wait for official signal
-            return;
-          }
+          // Check if Nahariya is in any of the active alerts
+          const nahariyaAlert = alerts.find(a => {
+            const cities = a.cities || a.towns || [];
+            return cities.some(c => c.includes(CITY_HE));
+          });
 
-          // Find alert for Nahariya
-          for (const alert of alerts) {
-            const cities = alert.cities || alert.towns || [];
-            const isLocal = cities.some(c => c.includes(CITY_HE));
-            if (!isLocal) continue;
-
-            const title = THREAT_TITLE_WS[alert.threat] || 'ירי רקטות וטילים';
-            const fakeData = { status: 'active', alert: { title, data: cities, cat: String(alert.threat || '1') } };
+          if (nahariyaAlert) {
+            // Active alert for Nahariya
+            const title = THREAT_TITLE_WS[nahariyaAlert.threat] || 'ירי רקטות וטילים';
+            const fakeData = { status: 'active', alert: { title, data: nahariyaAlert.cities || nahariyaAlert.towns || [], cat: String(nahariyaAlert.threat || '1') } };
             const alertType = classifyApiResponse(fakeData);
             if (alertType && alertType !== state) setState(alertType);
-            return;
+          } else if (['pre_alert','alert_rocket','alert_drone'].includes(state)) {
+            // Nahariya no longer in feed → all clear
+            setState('all_clear');
           }
         } catch(e) { console.warn('[WS] parse error:', e); }
       };
