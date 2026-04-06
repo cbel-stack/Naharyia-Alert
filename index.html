@@ -196,6 +196,16 @@
     }
     .idle #shelter-timer { display: none; }
 
+    /* ── SOURCE LOG ── */
+    #source-log {
+      margin-top: 10px;
+      font-size: clamp(11px, 1.5vw, 14px);
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 0.5px;
+      font-family: monospace;
+    }
+    .idle #source-log { display: none; }
+
     /* ── STATUS DOT (idle only) ── */
     #status-dot {
       display: none;
@@ -263,6 +273,7 @@
     <div id="clock"></div>
     <div id="countdown"></div>
     <div id="shelter-timer"></div>
+    <div id="source-log"></div>
     <div id="status-dot"></div>
 
     <button id="back-btn" onclick="document.getElementById('app').style.display='none'; document.getElementById('start-screen').style.display='flex'; stopSiren();" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; border:none; padding:12px 28px; border-radius:10px; font-size:16px; cursor:pointer;">← Retour</button>
@@ -415,6 +426,13 @@
     // =============================================
     // STATE MACHINE
     // =============================================
+    function logSource(source, event) {
+      const now = new Date();
+      const pad = v => String(v).padStart(2, '0');
+      const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+      document.getElementById('source-log').textContent = `${time} — ${source} — ${event}`;
+    }
+
     function setState(newState) {
       if (state === newState) return;
       state = newState;
@@ -516,7 +534,10 @@
 
         if (alertType) {
           // Active alert or explicit all-clear received
-          if (alertType !== state) setState(alertType);
+          if (alertType !== state) {
+            logSource('Polling', `${alertType} reçu (${data.source || '?'})`);
+            setState(alertType);
+          }
         } else {
           // No active alert for Nahariya
           // Alert disappeared without explicit all-clear → stay on current state, wait for official signal
@@ -596,9 +617,13 @@
             const title = THREAT_TITLE_WS[nahariyaAlert.threat] || 'ירי רקטות וטילים';
             const fakeData = { status: 'active', alert: { title, data: nahariyaAlert.cities || nahariyaAlert.towns || [], cat: String(nahariyaAlert.threat || '1') } };
             const alertType = classifyApiResponse(fakeData);
-            if (alertType && alertType !== state) setState(alertType);
+            if (alertType && alertType !== state) {
+              logSource('WebSocket', 'alerte reçue');
+              setState(alertType);
+            }
           } else if (['pre_alert','alert_rocket','alert_drone'].includes(state)) {
             // Nahariya no longer in feed → all clear
+            logSource('WebSocket', 'alerte disparue du feed');
             setState('all_clear');
           }
         } catch(e) { console.warn('[WS] parse error:', e); }
