@@ -244,10 +244,11 @@
     <button id="start-btn">▶ Démarrer</button>
 
     <div style="margin-top: 30px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
-      <button class="test-btn" data-state="pre_alert"    style="background:#CC7A1A; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Pré-alerte</button>
-      <button class="test-btn" data-state="alert_rocket" style="background:#B71C1C; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Roquette</button>
-      <button class="test-btn" data-state="alert_both"   style="background:#8B1A1A; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Drone+Roquette</button>
-<button class="test-btn" data-state="all_clear"    style="background:#1B5E20; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Fin d'alerte</button>
+      <button class="test-btn" data-state="pre_alert"                    style="background:#CC7A1A; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Pré-alerte</button>
+      <button class="test-btn" data-state="alert" data-threat="rocket"   style="background:#B71C1C; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Roquette</button>
+      <button class="test-btn" data-state="alert" data-threat="drone"    style="background:#B71C1C; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Drone</button>
+      <button class="test-btn" data-state="alert" data-threat="both"     style="background:#B71C1C; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Drone+Roquette</button>
+      <button class="test-btn" data-state="all_clear"                    style="background:#1B5E20; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Fin d'alerte</button>
     </div>
   </div>
 
@@ -284,46 +285,38 @@
 
     const ALERT_DEFS = {
       pre_alert: {
-        cssClass:    'pre-alert',
-        titleHe:     'אזהרה מוקדמת',
-        titleFr:     'PRÉ-ALERTE',
-        descHe:      'התקרבו למרחב המוגן',
-        descFr:      'Rapprochez-vous des abris'
+        cssClass: 'pre-alert',
+        titleHe:  'אזהרה מוקדמת',
+        titleFr:  'PRÉ-ALERTE',
+        descHe:   'התקרבו למרחב המוגן',
+        descFr:   'Rapprochez-vous des abris'
       },
-      alert_rocket: {
-        cssClass:    'alert',
-        titleHe:     'אזעקה — ירי רקטות וטילים',
-        titleFr:     'ALERTE — ROQUETTES / MISSILES',
-        descHe:      'היכנסו מיד למרחב המוגן',
-        descFr:      'Entrez immédiatement dans l\'abri'
-      },
-      alert_drone: {
-        cssClass:    'alert',
-        titleHe:     'אזעקה — חדירת כלי טיס עוין',
-        titleFr:     'ALERTE — DRONE HOSTILE',
-        descHe:      'היכנסו מיד למרחב המוגן',
-        descFr:      'Entrez immédiatement dans l\'abri'
-      },
-      alert_both: {
-        cssClass:    'alert',
-        titleHe:     'אזעקה — ירי רקטות וטילים + כלי טיס עוין',
-        titleFr:     'ALERTE — ROQUETTES + DRONE',
-        descHe:      'היכנסו מיד למרחב המוגן',
-        descFr:      'Entrez immédiatement dans l\'abri'
+      alert: {
+        cssClass: 'alert',
+        descHe:   'היכנסו מיד למרחב המוגן',
+        descFr:   'Entrez immédiatement dans l\'abri'
       },
       all_clear: {
-        cssClass:    'all-clear',
-        titleHe:     'ירוק — כל ברור',
-        titleFr:     'FIN D\'ALERTE',
-        descHe:      'ניתן לצאת מהמרחב המוגן',
-        descFr:      'Vous pouvez sortir'
+        cssClass: 'all-clear',
+        titleHe:  'ירוק — כל ברור',
+        titleFr:  'FIN D\'ALERTE',
+        descHe:   'ניתן לצאת מהמרחב המוגן',
+        descFr:   'Vous pouvez sortir'
       }
+    };
+
+    // Threat-specific titles (used when state === 'alert')
+    const THREAT_TEXTS = {
+      rocket: { titleHe: 'אזעקה — ירי רקטות וטילים',                    titleFr: 'ALERTE — ROQUETTES / MISSILES' },
+      drone:  { titleHe: 'אזעקה — חדירת כלי טיס עוין',                  titleFr: 'ALERTE — DRONE HOSTILE' },
+      both:   { titleHe: 'אזעקה — ירי רקטות וטילים + כלי טיס עוין',     titleFr: 'ALERTE — ROQUETTES + DRONE' },
     };
 
     // =============================================
     // STATE
     // =============================================
-    let state          = 'idle'; // idle | pre_alert | alert_rocket | alert_drone | all_clear
+    let state          = 'idle'; // idle | pre_alert | alert | all_clear
+    let currentThreat  = null;  // 'rocket' | 'drone' | 'both' — only set when state === 'alert'
     let audioCtx       = null;
     let sirenOsc       = null;
     let allClearEndMs  = null;
@@ -472,10 +465,14 @@
       el.textContent = `${time} ${label}: ${JSON.stringify(obj).slice(0, 200)}`;
     }
 
-    function setState(newState) {
-      if (state === newState) return;
-      state = newState;
+    // setState(newState, threat)
+    // newState : 'idle' | 'pre_alert' | 'alert' | 'all_clear'
+    // threat   : 'rocket' | 'drone' | 'both'  (only used when newState === 'alert')
+    function setState(newState, threat) {
+      // No-op if nothing changed; for alert state, also check threat
+      if (state === newState && (newState !== 'alert' || currentThreat === threat)) return;
 
+      state = newState;
       const app = document.getElementById('app');
       app.className = '';
 
@@ -484,6 +481,7 @@
         stopSiren();
         allClearEndMs  = null;
         shelterStartMs = null;
+        currentThreat  = null;
         document.getElementById('countdown').textContent     = '';
         document.getElementById('shelter-timer').textContent = '';
         return;
@@ -492,26 +490,40 @@
       const def = ALERT_DEFS[newState];
       app.classList.add(def.cssClass);
 
-      document.getElementById('alert-title-he').textContent = def.titleHe;
-      document.getElementById('alert-title-fr').textContent = def.titleFr;
-      document.getElementById('alert-desc-he').textContent  = def.descHe;
-      document.getElementById('alert-desc-fr').textContent  = def.descFr;
+      if (newState === 'alert') {
+        currentThreat = threat || 'rocket';
+        const texts = THREAT_TEXTS[currentThreat];
+        document.getElementById('alert-title-he').textContent = texts.titleHe;
+        document.getElementById('alert-title-fr').textContent = texts.titleFr;
+      } else {
+        document.getElementById('alert-title-he').textContent = def.titleHe;
+        document.getElementById('alert-title-fr').textContent = def.titleFr;
+      }
+      document.getElementById('alert-desc-he').textContent = def.descHe;
+      document.getElementById('alert-desc-fr').textContent = def.descFr;
 
       if (newState === 'all_clear') {
         stopSiren();
         allClearEndMs = Date.now() + ALL_CLEAR_MS;
         // shelterStartMs keeps running — don't reset
       } else {
-        // pre_alert, alert_rocket, alert_drone
-        if (newState === 'alert_rocket' || newState === 'alert_drone' || newState === 'alert_both') {
-          if (!shelterStartMs) shelterStartMs = Date.now(); // start only on real alert
+        if (newState === 'alert') {
+          if (!shelterStartMs) shelterStartMs = Date.now();
           playSiren();
-          // Trigger iOS Shortcut to monitor oref for all-clear
           triggerAllClearShortcut();
         }
         allClearEndMs = null;
         document.getElementById('countdown').textContent = '';
       }
+    }
+
+    // Convert classifyApiResponse string → { state, threat }
+    function parseAlert(alertType) {
+      if (!alertType) return null;
+      if (alertType === 'alert_rocket') return { state: 'alert', threat: 'rocket' };
+      if (alertType === 'alert_drone')  return { state: 'alert', threat: 'drone' };
+      if (alertType === 'alert_both')   return { state: 'alert', threat: 'both' };
+      return { state: alertType, threat: null };
     }
 
     // =============================================
@@ -555,8 +567,9 @@
       // Test mode: ?simulate=pre_alert | alert | all_clear | idle
       const sim = new URLSearchParams(location.search).get('simulate');
       if (sim) {
-        if (sim === 'idle') setState('idle');
-        else if (['pre_alert','alert_rocket','alert_drone','all_clear'].includes(sim)) setState(sim);
+        if (sim === 'idle')      setState('idle');
+        else if (sim === 'alert') setState('alert', 'rocket');
+        else if (['pre_alert','all_clear'].includes(sim)) setState(sim);
         return;
       }
 
@@ -577,19 +590,17 @@
           errBanner.style.display = 'none';
         }
 
-        const alertType = classifyApiResponse(data);
+        const parsed = parseAlert(classifyApiResponse(data));
 
-        if (alertType === 'all_clear') {
-          // Only show all-clear if we were already in alert state
-          // (prevents false green screen on app launch after event ended)
-          if (['pre_alert','alert_rocket','alert_drone'].includes(state)) {
+        if (parsed && parsed.state === 'all_clear') {
+          // Only show all-clear if we were already in an active state
+          if (['pre_alert','alert'].includes(state)) {
             logSource('Polling', `fin d'alerte (${data.source || '?'})`);
             setState('all_clear');
           }
-        } else if (alertType && alertType !== state) {
-          // Active alert
-          logSource('Polling', `${alertType} (${data.source || '?'})`);
-          setState(alertType);
+        } else if (parsed && (parsed.state !== state || (parsed.state === 'alert' && parsed.threat !== currentThreat))) {
+          logSource('Polling', `${parsed.state}${parsed.threat ? ':'+parsed.threat : ''} (${data.source || '?'})`);
+          setState(parsed.state, parsed.threat);
         }
       } catch (e) {
         console.warn('Poll error:', e.message);
@@ -605,7 +616,7 @@
         initAudio();
         document.getElementById('start-screen').style.display = 'none';
         document.getElementById('app').style.display = 'flex';
-        setState(btn.dataset.state);
+        setState(btn.dataset.state, btn.dataset.threat || null);
         // Show back button
         document.getElementById('back-btn').style.display = 'block';
       });
@@ -665,16 +676,15 @@
           });
 
           if (nahariyaAlert) {
-            // Use title from message if present, otherwise map from threat number
-            const title = nahariyaAlert.title || THREAT_TITLE_WS[nahariyaAlert.threat] || 'ירי רקטות וטילים';
+            const title  = nahariyaAlert.title || THREAT_TITLE_WS[nahariyaAlert.threat] || 'ירי רקטות וטילים';
             const cities = nahariyaAlert.cities || nahariyaAlert.towns || [];
             const fakeData = { status: 'active', alert: { title, data: cities, cat: String(nahariyaAlert.threat || '1') } };
-            const alertType = classifyApiResponse(fakeData);
-            if (alertType && alertType !== state) {
-              logSource('WebSocket', `${alertType} — "${title}"`);
-              setState(alertType);
+            const parsed = parseAlert(classifyApiResponse(fakeData));
+            if (parsed && (parsed.state !== state || (parsed.state === 'alert' && parsed.threat !== currentThreat))) {
+              logSource('WebSocket', `${parsed.state}${parsed.threat ? ':'+parsed.threat : ''} — "${title}"`);
+              setState(parsed.state, parsed.threat);
             }
-          } else if (['pre_alert','alert_rocket','alert_drone'].includes(state)) {
+          } else if (['pre_alert','alert'].includes(state)) {
             // Nahariya no longer in feed → all clear
             logSource('WebSocket', 'Nahariya disparue du feed');
             setState('all_clear');
