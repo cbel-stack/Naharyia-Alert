@@ -433,6 +433,14 @@
       document.getElementById('source-log').textContent = `${time} — ${source} — ${event}`;
     }
 
+    function logRaw(label, obj) {
+      const now = new Date();
+      const pad = v => String(v).padStart(2, '0');
+      const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+      const el = document.getElementById('source-log');
+      el.textContent = `${time} ${label}: ${JSON.stringify(obj).slice(0, 200)}`;
+    }
+
     function setState(newState) {
       if (state === newState) return;
       state = newState;
@@ -600,7 +608,7 @@
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          console.log('[WS] message:', JSON.stringify(msg));
+          logRaw('WS', msg);
 
           // Handle array of alerts
           const alerts = Array.isArray(msg) ? msg : (msg.data ? msg.data : null);
@@ -613,17 +621,18 @@
           });
 
           if (nahariyaAlert) {
-            // Active alert for Nahariya
-            const title = THREAT_TITLE_WS[nahariyaAlert.threat] || 'ירי רקטות וטילים';
-            const fakeData = { status: 'active', alert: { title, data: nahariyaAlert.cities || nahariyaAlert.towns || [], cat: String(nahariyaAlert.threat || '1') } };
+            // Use title from message if present, otherwise map from threat number
+            const title = nahariyaAlert.title || THREAT_TITLE_WS[nahariyaAlert.threat] || 'ירי רקטות וטילים';
+            const cities = nahariyaAlert.cities || nahariyaAlert.towns || [];
+            const fakeData = { status: 'active', alert: { title, data: cities, cat: String(nahariyaAlert.threat || '1') } };
             const alertType = classifyApiResponse(fakeData);
             if (alertType && alertType !== state) {
-              logSource('WebSocket', 'alerte reçue');
+              logSource('WebSocket', `${alertType} — "${title}"`);
               setState(alertType);
             }
           } else if (['pre_alert','alert_rocket','alert_drone'].includes(state)) {
             // Nahariya no longer in feed → all clear
-            logSource('WebSocket', 'alerte disparue du feed');
+            logSource('WebSocket', 'Nahariya disparue du feed');
             setState('all_clear');
           }
         } catch(e) { console.warn('[WS] parse error:', e); }
