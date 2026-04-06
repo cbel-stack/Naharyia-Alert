@@ -101,13 +101,6 @@
     #app.all-clear #city,
     #app.all-clear #city-he    { color: #00CC44; }
 
-    /* Flash on alert text only */
-    @keyframes flash-text {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.35; }
-    }
-    #app.alert #alert-title-he,
-    #app.alert #alert-title-fr { animation: flash-text 1s ease-in-out infinite; }
 
     /* ── ALERT CONTENT ── */
     #alert-content {
@@ -253,7 +246,7 @@
     <div style="margin-top: 30px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
       <button class="test-btn" data-state="pre_alert"    style="background:#CC7A1A; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Pré-alerte</button>
       <button class="test-btn" data-state="alert_rocket" style="background:#B71C1C; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Roquette</button>
-      <button class="test-btn" data-state="alert_drone"  style="background:#7B1FA2; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Drone</button>
+      <button class="test-btn" data-state="alert_both"   style="background:#8B1A1A; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Drone+Roquette</button>
 <button class="test-btn" data-state="all_clear"    style="background:#1B5E20; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Fin d'alerte</button>
     </div>
   </div>
@@ -308,6 +301,13 @@
         cssClass:    'alert',
         titleHe:     'אזעקה — חדירת כלי טיס עוין',
         titleFr:     'ALERTE — DRONE HOSTILE',
+        descHe:      'היכנסו מיד למרחב המוגן',
+        descFr:      'Entrez immédiatement dans l\'abri'
+      },
+      alert_both: {
+        cssClass:    'alert',
+        titleHe:     'אזעקה — ירי רקטות וטילים + כלי טיס עוין',
+        titleFr:     'ALERTE — ROQUETTES + DRONE',
         descHe:      'היכנסו מיד למרחב המוגן',
         descFr:      'Entrez immédiatement dans l\'abri'
       },
@@ -503,7 +503,7 @@
         // shelterStartMs keeps running — don't reset
       } else {
         // pre_alert, alert_rocket, alert_drone
-        if (newState === 'alert_rocket' || newState === 'alert_drone') {
+        if (newState === 'alert_rocket' || newState === 'alert_drone' || newState === 'alert_both') {
           if (!shelterStartMs) shelterStartMs = Date.now(); // start only on real alert
           playSiren();
           // Trigger iOS Shortcut to monitor oref for all-clear
@@ -525,20 +525,26 @@
     function classifyApiResponse(data) {
       if (!data || data.status === 'none') return null;
 
-      const alert = data.alert;
-      if (!alert || !Array.isArray(alert.data)) return null;
+      // Support array of alerts (multiple simultaneous threats)
+      const alerts = Array.isArray(data.alerts) ? data.alerts : (data.alert ? [data.alert] : []);
+      if (!alerts.length) return null;
 
-      // Filter by Nahariya
-      const isLocal = alert.data.some(c => c.includes(CITY_HE));
-      if (!isLocal) return null;
+      // Filter to Nahariya alerts only
+      const local = alerts.filter(a => Array.isArray(a.data) && a.data.some(c => c.includes(CITY_HE)));
+      if (!local.length) return null;
 
-      const title = (alert.title || '').trim();
+      // Check titles across all local alerts
+      const titles = local.map(a => (a.title || '').trim());
+      const allTitles = titles.join(' ');
 
-      if (title.includes('הסתיים') || title.includes('ניתן לצאת')) return 'all_clear';
-      if (title.includes('בדקות הקרובות') || title.includes('אזהרה מוקדמת')) return 'pre_alert';
-      if (title.includes('כלי טיס') || title.includes('טיס עוין')) return 'alert_drone';
+      if (allTitles.includes('הסתיים') || allTitles.includes('ניתן לצאת')) return 'all_clear';
+      if (allTitles.includes('בדקות הקרובות') || allTitles.includes('אזהרה מוקדמת')) return 'pre_alert';
 
-      // Rockets, missiles, or any other active alert
+      const hasDrone  = allTitles.includes('כלי טיס') || allTitles.includes('טיס עוין');
+      const hasRocket = allTitles.includes('ירי רקטות') || allTitles.includes('טילים') || (!hasDrone);
+
+      if (hasDrone && hasRocket) return 'alert_both';
+      if (hasDrone) return 'alert_drone';
       return 'alert_rocket';
     }
 
