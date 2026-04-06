@@ -79,23 +79,35 @@
       transition: background-color 0.4s ease;
     }
 
-    /* ── STATES ── */
-    #app.idle         { background: #000000; }
-    #app.pre-alert    { background: #CC7A1A; }
-    #app.alert-rocket { background: #B71C1C; }
-    #app.alert-drone  { background: #7B1FA2; }
-    #app.uncertain    { background: #7A6A00; }
-    #app.all-clear    { background: #1B5E20; }
+    /* ── STATES — all black background ── */
+    #app.idle      { background: #000; }
+    #app.pre-alert { background: #000; }
+    #app.alert     { background: #000; }
+    #app.all-clear { background: #000; }
 
-    /* Flash animation for alert states */
-    @keyframes flash {
+    /* ── TEXT COLORS per state ── */
+    #app.pre-alert #alert-title-he,
+    #app.pre-alert #alert-title-fr,
+    #app.pre-alert #city,
+    #app.pre-alert #city-he    { color: #FF9500; }
+
+    #app.alert #alert-title-he,
+    #app.alert #alert-title-fr,
+    #app.alert #city,
+    #app.alert #city-he        { color: #FF2D2D; }
+
+    #app.all-clear #alert-title-he,
+    #app.all-clear #alert-title-fr,
+    #app.all-clear #city,
+    #app.all-clear #city-he    { color: #00CC44; }
+
+    /* Flash on alert text only */
+    @keyframes flash-text {
       0%, 100% { opacity: 1; }
-      50%       { opacity: 0.75; }
+      50%       { opacity: 0.35; }
     }
-    #app.alert-rocket { animation: flash 1.2s ease-in-out infinite; }
-    #app.alert-drone  { animation: flash 1.2s ease-in-out infinite; }
-    #app.alert-rocket #clock { animation: none; opacity: 1; }
-    #app.alert-drone  #clock { animation: none; opacity: 1; }
+    #app.alert #alert-title-he,
+    #app.alert #alert-title-fr { animation: flash-text 1s ease-in-out infinite; }
 
     /* ── ALERT CONTENT ── */
     #alert-content {
@@ -232,8 +244,7 @@
       <button class="test-btn" data-state="pre_alert"    style="background:#CC7A1A; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Pré-alerte</button>
       <button class="test-btn" data-state="alert_rocket" style="background:#B71C1C; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Roquette</button>
       <button class="test-btn" data-state="alert_drone"  style="background:#7B1FA2; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Drone</button>
-      <button class="test-btn" data-state="uncertain"    style="background:#7A6A00; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Fin non confirmée</button>
-      <button class="test-btn" data-state="all_clear"    style="background:#1B5E20; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Fin d'alerte</button>
+<button class="test-btn" data-state="all_clear"    style="background:#1B5E20; border:none; color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; cursor:pointer;">Test Fin d'alerte</button>
     </div>
   </div>
 
@@ -276,14 +287,14 @@
         descFr:      'Rapprochez-vous des abris'
       },
       alert_rocket: {
-        cssClass:    'alert-rocket',
+        cssClass:    'alert',
         titleHe:     'אזעקה — ירי רקטות וטילים',
         titleFr:     'ALERTE — ROQUETTES / MISSILES',
         descHe:      'היכנסו מיד למרחב המוגן',
         descFr:      'Entrez immédiatement dans l\'abri'
       },
       alert_drone: {
-        cssClass:    'alert-drone',
+        cssClass:    'alert',
         titleHe:     'אזעקה — חדירת כלי טיס עוין',
         titleFr:     'ALERTE — DRONE HOSTILE',
         descHe:      'היכנסו מיד למרחב המוגן',
@@ -295,20 +306,13 @@
         titleFr:     'FIN D\'ALERTE',
         descHe:      'ניתן לצאת מהמרחב המוגן',
         descFr:      'Vous pouvez sortir'
-      },
-      uncertain: {
-        cssClass:    'uncertain',
-        titleHe:     'סיום לא מאושר',
-        titleFr:     'FIN NON CONFIRMÉE',
-        descHe:      'אין גישה ל-API — הישארו במרחב המוגן ובדקו את אפליקציית פיקוד העורף',
-        descFr:      'Pas d\'accès à l\'API — restez dans l\'abri et vérifiez l\'app Pikud HaOref'
       }
     };
 
     // =============================================
     // STATE
     // =============================================
-    let state          = 'idle'; // idle | pre_alert | alert_rocket | alert_drone | all_clear | uncertain
+    let state          = 'idle'; // idle | pre_alert | alert_rocket | alert_drone | all_clear
     let audioCtx       = null;
     let sirenOsc       = null;
     let allClearEndMs  = null;
@@ -388,7 +392,7 @@
     // =============================================
     function updateTimers() {
       // All-clear countdown
-      if ((state === 'all_clear' || state === 'uncertain') && allClearEndMs) {
+      if (state === 'all_clear' && allClearEndMs) {
         const rem = allClearEndMs - Date.now();
         if (rem <= 0) { setState('idle'); return; }
         const m = Math.floor(rem / 60000);
@@ -440,10 +444,6 @@
         stopSiren();
         allClearEndMs = Date.now() + ALL_CLEAR_MS;
         // shelterStartMs keeps running — don't reset
-      } else if (newState === 'uncertain') {
-        stopSiren();
-        allClearEndMs = Date.now() + (10 * 60 * 1000); // 10 min then back to black
-        // shelterStartMs keeps running — don't reset
       } else {
         // pre_alert, alert_rocket, alert_drone
         if (newState === 'alert_rocket' || newState === 'alert_drone') {
@@ -491,7 +491,7 @@
       const sim = new URLSearchParams(location.search).get('simulate');
       if (sim) {
         if (sim === 'idle') setState('idle');
-        else if (['pre_alert','alert_rocket','alert_drone','all_clear','uncertain'].includes(sim)) setState(sim);
+        else if (['pre_alert','alert_rocket','alert_drone','all_clear'].includes(sim)) setState(sim);
         return;
       }
 
@@ -519,11 +519,7 @@
           if (alertType !== state) setState(alertType);
         } else {
           // No active alert for Nahariya
-          if (['pre_alert','alert_rocket','alert_drone'].includes(state)) {
-            // Alert disappeared without explicit all-clear → uncertain
-            setState('uncertain');
-          }
-          // uncertain/all_clear/idle → do nothing, wait for explicit signal
+          // Alert disappeared without explicit all-clear → stay on current state, wait for official signal
         }
       } catch (e) {
         console.warn('Poll error:', e.message);
@@ -591,9 +587,7 @@
 
           if (alerts.length === 0) {
             // Empty → alert ended
-            if (['pre_alert','alert_rocket','alert_drone'].includes(state)) {
-              setState('uncertain');
-            }
+            // Alert disappeared — stay on current state, wait for official signal
             return;
           }
 
