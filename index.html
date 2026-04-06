@@ -199,6 +199,23 @@
     }
     .idle #source-log { display: none; }
 
+    /* ── HISTORY LOG ── */
+    #history-log {
+      margin-top: 24px;
+      font-size: clamp(11px, 1.6vw, 14px);
+      color: #444;
+      font-family: monospace;
+      text-align: left;
+      line-height: 1.8;
+      max-height: 200px;
+      overflow-y: auto;
+      width: 100%;
+      max-width: 420px;
+      padding: 0 12px;
+    }
+    #history-log div { border-bottom: 1px solid #1a1a1a; padding: 2px 0; }
+    #app:not(.idle) #history-log { display: none; }
+
     /* ── STATUS DOT ── */
     #status-dot {
       width: 9px;
@@ -268,6 +285,7 @@
     <div id="countdown"></div>
     <div id="shelter-timer"></div>
     <div id="source-log"></div>
+    <div id="history-log"></div>
     <div id="status-dot"></div>
 
     <button id="back-btn" onclick="document.getElementById('app').style.display='none'; document.getElementById('start-screen').style.display='flex'; stopSiren();" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; border:none; padding:12px 28px; border-radius:10px; font-size:16px; cursor:pointer;">← Retour</button>
@@ -417,6 +435,37 @@
     setInterval(updateTimers, 1000);
 
     // =============================================
+    // HISTORY (localStorage)
+    // =============================================
+    const HISTORY_KEY = 'nahariya-alert-history';
+    const MAX_HISTORY = 30;
+
+    function addToHistory(label) {
+      try {
+        const now = new Date();
+        const pad = v => String(v).padStart(2, '0');
+        const entry = `${pad(now.getDate())}/${pad(now.getMonth()+1)} ${pad(now.getHours())}:${pad(now.getMinutes())} — ${label}`;
+        const hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        hist.unshift(entry);
+        if (hist.length > MAX_HISTORY) hist.length = MAX_HISTORY;
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+        renderHistory();
+      } catch(_) {}
+    }
+
+    function renderHistory() {
+      try {
+        const hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        const el = document.getElementById('history-log');
+        if (!hist.length) {
+          el.innerHTML = '<div style="color:#333">Aucun événement enregistré</div>';
+          return;
+        }
+        el.innerHTML = hist.map(e => `<div>${e}</div>`).join('');
+      } catch(_) {}
+    }
+
+    // =============================================
     // STATE MACHINE
     // =============================================
 function logSource(source, event) {
@@ -464,9 +513,13 @@ function logSource(source, event) {
         const texts = THREAT_TEXTS[currentThreat];
         document.getElementById('alert-title-he').textContent = texts.titleHe;
         document.getElementById('alert-title-fr').textContent = texts.titleFr;
+        const histLabel = { rocket: 'ALERTE — Roquettes/Missiles', drone: 'ALERTE — Drone hostile', both: 'ALERTE — Roquettes + Drone' }[currentThreat];
+        addToHistory(histLabel);
       } else {
         document.getElementById('alert-title-he').textContent = def.titleHe;
         document.getElementById('alert-title-fr').textContent = def.titleFr;
+        if (newState === 'pre_alert') addToHistory('PRE-ALERTE');
+        if (newState === 'all_clear') addToHistory('FIN D\'ALERTE');
       }
       document.getElementById('alert-desc-he').textContent = def.descHe;
       document.getElementById('alert-desc-fr').textContent = def.descFr;
@@ -682,6 +735,9 @@ function logSource(source, event) {
       document.getElementById('start-screen').style.display = 'none';
       const app = document.getElementById('app');
       app.style.display = 'flex';
+
+      // Show history immediately
+      renderHistory();
 
       // WebSocket: real-time (primary)
       connectWebSocket();
