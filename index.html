@@ -639,6 +639,11 @@
       ws.onopen = () => {
         console.log('[WS] connected');
         document.getElementById('status-dot').className = 'ws-ok';
+        // Ping every 25s to keep connection alive (iOS kills idle WS after ~30s)
+        const ping = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) ws.send('ping');
+          else clearInterval(ping);
+        }, 25000);
       };
 
       ws.onmessage = (event) => {
