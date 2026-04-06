@@ -206,18 +206,18 @@
     }
     .idle #source-log { display: none; }
 
-    /* ── STATUS DOT (idle only) ── */
+    /* ── STATUS DOT ── */
     #status-dot {
-      display: none;
-      width: 7px;
-      height: 7px;
+      width: 9px;
+      height: 9px;
       border-radius: 50%;
-      background: #111;
+      background: #333;
       position: fixed;
-      bottom: 20px;
-      left: 22px;
+      bottom: 18px;
+      left: 20px;
     }
-    .idle #status-dot { display: block; }
+    #status-dot.ws-ok   { background: #00aa44; }
+    #status-dot.ws-lost { background: #cc3300; }
 
     /* ── API ERROR BANNER ── */
     #api-error {
@@ -285,7 +285,7 @@
     // CONFIG
     // =============================================
     const CITY_HE        = 'נהריה';
-    const POLL_MS        = 3000;          // poll every 3 sec
+    const POLL_MS        = 2000;          // poll every 2 sec
     const ALL_CLEAR_MS   = 10 * 1000; // 10 sec green screen
     const SIREN_DURATION = 15;            // seconds
 
@@ -603,7 +603,10 @@
         ws = new WebSocket('wss://ws.tzevaadom.co.il/socket?platform=WEB');
       } catch(e) { return; }
 
-      ws.onopen = () => console.log('[WS] connected');
+      ws.onopen = () => {
+        console.log('[WS] connected');
+        document.getElementById('status-dot').className = 'ws-ok';
+      };
 
       ws.onmessage = (event) => {
         try {
@@ -639,11 +642,15 @@
       };
 
       ws.onclose = () => {
-        console.log('[WS] closed — reconnecting in 5s');
-        setTimeout(connectWebSocket, 5000);
+        console.log('[WS] closed — reconnecting in 1s');
+        document.getElementById('status-dot').className = 'ws-lost';
+        setTimeout(connectWebSocket, 1000);
       };
 
-      ws.onerror = () => console.warn('[WS] error');
+      ws.onerror = () => {
+        console.warn('[WS] error');
+        document.getElementById('status-dot').className = 'ws-lost';
+      };
     }
 
     // =============================================
