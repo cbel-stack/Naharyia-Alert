@@ -573,15 +573,17 @@
 
         const alertType = classifyApiResponse(data);
 
-        if (alertType) {
-          // Active alert or explicit all-clear received
-          if (alertType !== state) {
-            logSource('Polling', `${alertType} reçu (${data.source || '?'})`);
-            setState(alertType);
+        if (alertType === 'all_clear') {
+          // Only show all-clear if we were already in alert state
+          // (prevents false green screen on app launch after event ended)
+          if (['pre_alert','alert_rocket','alert_drone'].includes(state)) {
+            logSource('Polling', `fin d'alerte (${data.source || '?'})`);
+            setState('all_clear');
           }
-        } else {
-          // No active alert for Nahariya
-          // Alert disappeared without explicit all-clear → stay on current state, wait for official signal
+        } else if (alertType && alertType !== state) {
+          // Active alert
+          logSource('Polling', `${alertType} (${data.source || '?'})`);
+          setState(alertType);
         }
       } catch (e) {
         console.warn('Poll error:', e.message);
