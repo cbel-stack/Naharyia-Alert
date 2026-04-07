@@ -598,6 +598,7 @@ function logSource(source, event) {
         const res  = await fetch('/api/alerts', { cache: 'no-store' });
         if (!res.ok) {
           document.getElementById('api-error').style.display = 'block';
+          document.getElementById('status-dot').className = 'ws-lost';
           return;
         }
         const data = await res.json();
@@ -607,8 +608,10 @@ function logSource(source, event) {
         if (data.apiError) {
           errBanner.textContent = '⚠ API injoignable — alertes peut-être manquées';
           errBanner.style.display = 'block';
+          document.getElementById('status-dot').className = 'ws-lost';
         } else {
           errBanner.style.display = 'none';
+          document.getElementById('status-dot').className = 'ws-ok';
         }
 
         const parsed = parseAlert(classifyApiResponse(data));
@@ -626,6 +629,7 @@ function logSource(source, event) {
       } catch (e) {
         console.warn('Poll error:', e.message);
         document.getElementById('api-error').style.display = 'block';
+        document.getElementById('status-dot').className = 'ws-lost';
       }
     }
 
@@ -678,7 +682,6 @@ function logSource(source, event) {
 
       ws.onopen = () => {
         console.log('[WS] connected');
-        document.getElementById('status-dot').className = 'ws-ok';
       };
 
       ws.onmessage = (event) => {
@@ -715,13 +718,11 @@ function logSource(source, event) {
 
       ws.onclose = () => {
         console.log('[WS] closed — reconnecting in 1s');
-        document.getElementById('status-dot').className = 'ws-lost';
         setTimeout(connectWebSocket, 1000);
       };
 
       ws.onerror = () => {
         console.warn('[WS] error');
-        document.getElementById('status-dot').className = 'ws-lost';
       };
     }
 
