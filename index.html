@@ -700,6 +700,8 @@ function logSource(source, event) {
           });
 
           if (nahariyaAlert) {
+            // WS only triggers active alerts — never all-clear
+            // (a WS message about another city does not mean Nahariya is safe)
             const title  = nahariyaAlert.title || THREAT_TITLE_WS[nahariyaAlert.threat] || 'ירי רקטות וטילים';
             const cities = nahariyaAlert.cities || nahariyaAlert.towns || [];
             const fakeData = { status: 'active', alert: { title, data: cities, cat: String(nahariyaAlert.threat || '1') } };
@@ -708,10 +710,6 @@ function logSource(source, event) {
               logSource('WebSocket', `${parsed.state}${parsed.threat ? ':'+parsed.threat : ''} — "${title}"`);
               setState(parsed.state, parsed.threat);
             }
-          } else if (['pre_alert','alert'].includes(state)) {
-            // Nahariya no longer in feed → all clear
-            logSource('WebSocket', 'Nahariya disparue du feed');
-            setState('all_clear');
           }
         } catch(e) { console.warn('[WS] parse error:', e); }
       };
