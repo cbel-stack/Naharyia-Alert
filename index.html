@@ -693,21 +693,25 @@ function logSource(source, event) {
           const alerts = Array.isArray(msg) ? msg : (msg.data ? msg.data : null);
           if (!alerts) return;
 
-          // Check if Nahariya is in any of the active alerts
-          const nahariyaAlert = alerts.find(a => {
+          // Collect ALL Nahariya alerts (may be drone + rocket simultaneously)
+          const nahariyaAlerts = alerts.filter(a => {
             const cities = a.cities || a.towns || [];
             return cities.some(c => c.includes(CITY_HE));
           });
 
-          if (nahariyaAlert) {
+          if (nahariyaAlerts.length > 0) {
             // WS only triggers active alerts — never all-clear
-            // (a WS message about another city does not mean Nahariya is safe)
-            const title  = nahariyaAlert.title || THREAT_TITLE_WS[nahariyaAlert.threat] || 'ירי רקטות וטילים';
-            const cities = nahariyaAlert.cities || nahariyaAlert.towns || [];
-            const fakeData = { status: 'active', alert: { title, data: cities, cat: String(nahariyaAlert.threat || '1') } };
+            const fakeData = {
+              status: 'active',
+              alerts: nahariyaAlerts.map(a => ({
+                title: a.title || THREAT_TITLE_WS[a.threat] || 'ירי רקטות וטילים',
+                data:  a.cities || a.towns || [],
+                cat:   String(a.threat || '1')
+              }))
+            };
             const parsed = parseAlert(classifyApiResponse(fakeData));
             if (parsed && (parsed.state !== state || (parsed.state === 'alert' && parsed.threat !== currentThreat))) {
-              logSource('WebSocket', `${parsed.state}${parsed.threat ? ':'+parsed.threat : ''} — "${title}"`);
+              logSource('WebSocket', `${parsed.state}:${parsed.threat || ''}`);
               setState(parsed.state, parsed.threat);
             }
           }

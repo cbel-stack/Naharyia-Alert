@@ -46,23 +46,23 @@ export default async function handler(req, res) {
       fetchNotifications().catch(e => { errors.push(e.message); return null; })
     ]);
 
-    // ── 1. Check active alert for Nahariya in /notifications ──────────────
+    // ── 1. Check active alerts for Nahariya in /notifications ─────────────
+    // Use filter (not find) to capture simultaneous drone + rocket alerts
     if (Array.isArray(notifications) && notifications.length > 0) {
-      const nahariyaAlert = notifications.find(a => {
+      const nahariyaAlerts = notifications.filter(a => {
         const cities = a.cities || a.towns || [];
         return cities.some(c => c.includes(CITY_HE));
       });
 
-      if (nahariyaAlert) {
-        const title = THREAT_TITLE[nahariyaAlert.threat] || 'ירי רקטות וטילים';
+      if (nahariyaAlerts.length > 0) {
         return res.status(200).json({
           status: 'active',
           source: 'tzevaadom-notifications',
-          alert: {
-            title,
-            data: nahariyaAlert.cities || nahariyaAlert.towns || [],
-            cat: String(nahariyaAlert.threat || '1')
-          }
+          alerts: nahariyaAlerts.map(a => ({
+            title: THREAT_TITLE[a.threat] || 'ירי רקטות וטילים',
+            data:  a.cities || a.towns || [],
+            cat:   String(a.threat || '1')
+          }))
         });
       }
     }
