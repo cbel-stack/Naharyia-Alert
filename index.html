@@ -671,9 +671,11 @@ function logSource(source, event) {
     // WEBSOCKET — tzevaadom real-time feed
     // =============================================
     const THREAT_TITLE_WS = {
-      1: 'ירי רקטות וטילים',
-      3: 'חדירת כלי טיס עוין',
-      6: 'חדירת כלי טיס עוין',
+      0: 'ירי רקטות וטילים',   // missiles
+      1: 'ירי רקטות וטילים',   // rockets
+      3: 'חדירת כלי טיס עוין', // drone
+      5: 'חדירת כלי טיס עוין', // drone (confirmed from live data)
+      6: 'חדירת כלי טיס עוין', // drone
     };
 
     function connectWebSocket() {

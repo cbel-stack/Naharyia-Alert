@@ -4,9 +4,11 @@ const AREA_ID     = 6;      // Nahariya area ID in tzevaadom
 const MAX_AGE_MS  = 60 * 60 * 1000; // 60 minutes
 
 const THREAT_TITLE = {
-  1: 'ירי רקטות וטילים',
-  3: 'חדירת כלי טיס עוין',
-  6: 'חדירת כלי טיס עוין',
+  0: 'ירי רקטות וטילים',   // missiles
+  1: 'ירי רקטות וטילים',   // rockets
+  3: 'חדירת כלי טיס עוין', // drone
+  5: 'חדירת כלי טיס עוין', // drone (confirmed from live data)
+  6: 'חדירת כלי טיס עוין', // drone
 };
 
 // ── tzevaadom /ios/feed ────────────────────────────────────────────────────
