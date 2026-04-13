@@ -40,6 +40,10 @@ export default async function handler(req, res) {
   const now = Date.now();
   const errors = [];
 
+  // alertStart (seconds) passed by client when already in alert state.
+  // All-clear systemMessages older than alertStart are ignored.
+  const alertStartSec = req.query.alertStart ? parseInt(req.query.alertStart, 10) : 0;
+
   try {
     const [feed, notifications] = await Promise.all([
       fetchIosFeed().catch(e => { errors.push(e.message); return null; }),
@@ -76,9 +80,12 @@ export default async function handler(req, res) {
                            (msg.instructionType === 1);
         if (!isEndEvent) return false;
 
-        // Must be recent
+        // Must be recent (within 60 min)
         const msgTime = (msg.time || 0) * 1000;
         if (now - msgTime > MAX_AGE_MS) return false;
+
+        // Must be AFTER the current alert started (avoids picking up old events)
+        if (alertStartSec && (msg.time || 0) < alertStartSec) return false;
 
         // Must include Nahariya's area or city
         const areas  = msg.areasIds  || [];

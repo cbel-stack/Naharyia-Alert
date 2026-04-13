@@ -595,7 +595,9 @@ function logSource(source, event) {
       }
 
       try {
-        const res  = await fetch('/api/alerts', { cache: 'no-store' });
+        // Pass alert start time so the proxy ignores all-clear messages from previous events
+        const alertParam = shelterStartMs ? `?alertStart=${Math.floor(shelterStartMs / 1000)}` : '';
+        const res  = await fetch(`/api/alerts${alertParam}`, { cache: 'no-store' });
         if (!res.ok) {
           document.getElementById('api-error').style.display = 'block';
           document.getElementById('status-dot').className = 'ws-lost';
